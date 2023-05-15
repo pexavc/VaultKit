@@ -33,12 +33,13 @@ public class VaultManager: ObservableObject, Codable {
             .removeDuplicates()
             .sink { [weak self] newValue in
                 
-            print("[VaultManager] isSubscribed Changed: \(newValue)")
-            DispatchQueue.main.async {
-                self?.isSubscribed = newValue
-                self?.objectWillChange.send()
-            }
-        }.store(in: &cancellables)
+                print("[VaultManager] isSubscribed Changed: \(newValue)")
+                DispatchQueue.main.async {
+                    self?.isSubscribed = newValue
+                    self?.objectWillChange.send()
+                }
+            }.store(in: &cancellables)
+        kit.observe()
     }
     
     @discardableResult

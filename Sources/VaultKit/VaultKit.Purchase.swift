@@ -17,31 +17,32 @@ extension VaultKit {
             self.purchaseTask = Task { [weak self] in
                 let result = try? await vaultProduct.product?.purchase()
                 switch result {
-
+                    
                 case let .success(.verified(transaction)):
-
-                    await transaction.finish()
                     
                     self?.purchasedProductIDs.insert(transaction.productID)
+                    await transaction.finish()
+                    self?.setCurrentPurchase(transaction, willRenew: nil)
                     
-                    print(productPurchasedDescription)
-
                 case let .success(.unverified(transaction, error)):
-
+                    
                     self?.purchasedProductIDs.remove(transaction.productID)
-
+                    await transaction.finish()
+                    self?.checkProducts()
+                    
                 case .pending:
-
+                    
                     break
-
+                    
                 case .userCancelled:
-
+                    self?.checkProducts()
+                    
                     break
-
+                    
                 @unknown default:
-
+                    
                     break
-
+                    
                 }
             }
         }
@@ -51,36 +52,83 @@ extension VaultKit {
         self.purchase(item.id)
     }
     
+    func checkProducts() {
+        self.checkProductsTask = Task { [weak self] in
+            guard let products = self?.products.values else {
+                return
+            }
+            
+            var statuses: [StoreKit.Product.SubscriptionInfo.Status : String] = [:]
+            
+            for vaultProduct in products {
+                if let subscription = vaultProduct.product?.subscription {
+                    if let newStatuses = try? await subscription.status,
+                       let status = newStatuses.first {
+                        
+                        
+                        statuses[status] = vaultProduct.id
+                    }
+                }
+            }
+            
+            let validSubscriptions: [StoreKit.Product.SubscriptionInfo.Status] = Array(statuses.keys).filter { $0.state == .subscribed }
+            
+            var verifiedTransactions: [Transaction:Bool] = [:]
+            
+            for validSubscription in validSubscriptions {
+                if let productID = statuses[validSubscription] {
+                    
+                    guard case .verified(let transaction) = validSubscription.transaction else {
+                        return
+                    }
+                    
+                    guard case .verified(let info) = validSubscription.renewalInfo else {
+                        return
+                    }
+                    
+                    
+                    verifiedTransactions[transaction] = info.willAutoRenew
+                    self?.purchasedProductIDs.insert(productID)
+                }
+            }
+            
+            //TODO: allow for a collection of Verified Active Products
+            if let firstTransaction = (verifiedTransactions).keys.first {
+                self?.setCurrentPurchase(firstTransaction, willRenew: verifiedTransactions[firstTransaction])
+            }
+            
+            print(productPurchasedDescription)
+        }
+    }
+    
     func restorePurchases() {
         self.purchaseTask?.cancel()
         self.restoreTask?.cancel()
+        
         self.restoreTask = Task { [weak self] in
             for await result in Transaction.currentEntitlements {
-
+                
                 guard case .verified(let transaction) = result else {
-
                     continue
-
                 }
-
-
-                if transaction.revocationDate == nil {
-                    if let product = self?.products[transaction.productID] {
-                        
-                        self?.currentPurchase = .init(expirationDate: transaction.expirationDate,
-                                                      purchaseDate: transaction.purchaseDate,
-                                                      isRenewable: product.kind == .renewable)
-                        
-                        self?.purchasedProductIDs.insert(transaction.productID)
-                    }
-
-                } else {
-
+                
+                if transaction.revocationDate != nil {
                     self?.purchasedProductIDs.remove(transaction.productID)
-
                 }
+                
+                await transaction.finish()
             }
+            
             print(productPurchasedDescription)
+        }
+    }
+    
+    func setCurrentPurchase(_ transaction: Transaction, willRenew: Bool?) {
+        if let product = self.products[transaction.productID] {
+            
+            self.currentPurchase = .init(expirationDate: transaction.expirationDate,
+                                         purchaseDate: transaction.purchaseDate,
+                                         isRenewable: willRenew ?? (product.kind == .renewable))
         }
     }
 }

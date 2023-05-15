@@ -27,6 +27,9 @@ class VaultKit: ObservableObject, Codable {
     private var loadingTask: Task<(), Error>? = nil
     internal var purchaseTask: Task<(), Error>? = nil
     internal var restoreTask: Task<(), Error>? = nil
+    internal var checkProductsTask: Task<(), Error>? = nil
+    private var transactionUpdatedTask: Task<(), Never>? = nil
+    private var transactionVerifyTask: Task<(), Never>? = nil
     internal var isLoaded: Bool = false
     
     @Published var isSubscribed: Bool = false
@@ -36,6 +39,25 @@ class VaultKit: ObservableObject, Codable {
         self.id = id
         self.productOrdering = products.map { $0.id }
         self.products = VaultKit.load(products)
+    }
+    
+    func observe() {
+        self.transactionUpdatedTask?.cancel()
+        self.transactionUpdatedTask = Task.detached { [weak self] in
+            for await result in StoreKit.Transaction.updates
+            {
+                switch result {
+                case .verified(let transaction):
+                    self?.purchasedProductIDs.insert(transaction.productID)
+                    await transaction.finish()
+                    self?.checkProducts()
+                case .unverified(let transaction, _):
+                    self?.purchasedProductIDs.remove(transaction.productID)
+                    await transaction.finish()
+                    self?.checkProducts()
+                }
+            }
+        }
     }
     
     enum CodingKeys: CodingKey {
@@ -64,6 +86,8 @@ class VaultKit: ObservableObject, Codable {
         self.lastUpdate = lastUpdate ?? self.lastUpdate
         
         self.load(Array(products.values))
+        
+        observe()
     }
     
     func load(_ products: [VaultProduct]) {
@@ -84,6 +108,7 @@ class VaultKit: ObservableObject, Codable {
             }
             
             this.isLoaded = true
+            this.checkProducts()
         }
     }
     
