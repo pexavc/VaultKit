@@ -47,6 +47,15 @@ extension VaultManager {
     public func productFor(_ product: any VaultProductIterable) -> VaultProduct? {
         kit.products[product.id]
     }
+    
+    public func productsFor(_ products: [any VaultProductIterable]) -> [VaultProduct] {
+        let productIDs: [String] = products.map { $0.id }
+        return VaultManager.products.filter { productIDs.contains($0.id) }
+    }
+    
+    public static func productsFor(_ products: [any VaultProductIterable]) -> [VaultProduct] {
+        return VaultManager.shared.productsFor(products)
+    }
 }
 
 extension Collection where Self.Element == VaultProduct {

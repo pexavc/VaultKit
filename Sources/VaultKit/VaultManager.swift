@@ -103,6 +103,14 @@ extension VaultManager {
         VaultManager.shared.restore()
     }
     
+    public func checkSubscription() {
+        kit.checkProducts()
+    }
+    
+    public static func checkSubscription() {
+        VaultManager.shared.checkSubscription()
+    }
+    
     public func isPurchased(_ item: any VaultProductIterable) -> Bool {
         kit.isPurchased(item)
     }

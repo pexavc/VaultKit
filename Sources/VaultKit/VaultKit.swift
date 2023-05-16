@@ -48,7 +48,6 @@ class VaultKit: ObservableObject, Codable {
             {
                 switch result {
                 case .verified(let transaction):
-                    self?.purchasedProductIDs.insert(transaction.productID)
                     await transaction.finish()
                     self?.checkProducts()
                 case .unverified(let transaction, _):

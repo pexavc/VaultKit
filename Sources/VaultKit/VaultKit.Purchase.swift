@@ -79,10 +79,12 @@ extension VaultKit {
                 if let productID = statuses[validSubscription] {
                     
                     guard case .verified(let transaction) = validSubscription.transaction else {
+                        self?.purchasedProductIDs.remove(productID)
                         return
                     }
                     
                     guard case .verified(let info) = validSubscription.renewalInfo else {
+                        self?.purchasedProductIDs.remove(productID)
                         return
                     }
                     
