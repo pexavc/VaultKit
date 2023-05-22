@@ -61,7 +61,14 @@ extension VaultKit {
             var statuses: [StoreKit.Product.SubscriptionInfo.Status : String] = [:]
             
             for vaultProduct in products {
-                if let subscription = vaultProduct.product?.subscription {
+                if vaultProduct.product?.type == .nonConsumable {
+                    guard case .verified(let transaction) = await vaultProduct.product?.latestTransaction else {
+                        self?.purchasedProductIDs.remove(vaultProduct.id)
+                        continue
+                    }
+                    
+                    self?.purchasedProductIDs.insert(vaultProduct.id)
+                } else if let subscription = vaultProduct.product?.subscription {
                     if let newStatuses = try? await subscription.status,
                        let status = newStatuses.first {
                         

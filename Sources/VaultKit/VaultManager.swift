@@ -17,6 +17,7 @@ public class VaultManager: ObservableObject, Codable {
     let kit: VaultKit
     
     @Published public var isSubscribed: Bool = false
+    @Published public var hasPurchases: Bool = false
     
     init(_ products: [VaultProduct] = []) {
         self.kit = .init(products)
@@ -36,6 +37,17 @@ public class VaultManager: ObservableObject, Codable {
                 print("[VaultManager] isSubscribed Changed: \(newValue)")
                 DispatchQueue.main.async {
                     self?.isSubscribed = newValue
+                    self?.objectWillChange.send()
+                }
+            }.store(in: &cancellables)
+        
+        kit.$hasPurchases
+            .removeDuplicates()
+            .sink { [weak self] newValue in
+                
+                print("[VaultManager] hasPurchases Changed: \(newValue)")
+                DispatchQueue.main.async {
+                    self?.hasPurchases = newValue
                     self?.objectWillChange.send()
                 }
             }.store(in: &cancellables)
