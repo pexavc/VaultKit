@@ -20,7 +20,7 @@ class VaultKit: ObservableObject, Codable {
         didSet {
             lastUpdate = .init()
             
-            hasPurchases = purchasedProductIDs.isEmpty == false
+            purchases = Array(purchasedProductIDs)
             
             let subscriptions = purchasedProductIDs.filter { products[$0]?.product?.type == .autoRenewable }
             isSubscribed = subscriptions.isEmpty == false
@@ -35,7 +35,7 @@ class VaultKit: ObservableObject, Codable {
     private var transactionVerifyTask: Task<(), Never>? = nil
     internal var isLoaded: Bool = false
     
-    @Published var hasPurchases: Bool = false
+    @Published var purchases: [String] = []
     @Published var isSubscribed: Bool = false
     @Published var currentPurchase: VaultActiveProduct? = nil
     
