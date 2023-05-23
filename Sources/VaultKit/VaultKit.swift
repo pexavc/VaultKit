@@ -37,7 +37,9 @@ class VaultKit: ObservableObject, Codable {
     
     @Published var purchases: [String] = []
     @Published var isSubscribed: Bool = false
+    @Published var isPurchasing: Bool = false
     @Published var currentPurchase: VaultActiveProduct? = nil
+    @Published var currentSubscription: VaultActiveProduct? = nil
     
     init(_ products: [VaultProduct], id: UUID = .init()) {
         self.id = id

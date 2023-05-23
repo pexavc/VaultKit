@@ -14,15 +14,23 @@ extension VaultKit {
     func purchase(_ id: String) {
         if let vaultProduct = self.products[id] {
             self.purchaseTask?.cancel()
+            self.isPurchasing = false
             self.purchaseTask = Task { [weak self] in
+                self?.isPurchasing = true
                 let result = try? await vaultProduct.product?.purchase()
+                self?.isPurchasing = false
                 switch result {
                     
                 case let .success(.verified(transaction)):
                     
                     self?.purchasedProductIDs.insert(transaction.productID)
                     await transaction.finish()
-                    self?.setCurrentPurchase(transaction, willRenew: nil)
+                    
+                    if self?.products[transaction.productID]?.kind == .renewable {
+                        self?.setCurrentSubscription(transaction, willRenew: true)
+                    } else {
+                        self?.setCurrentPurchase(transaction, willRenew: false)
+                    }
                     
                 case let .success(.unverified(transaction, error)):
                     
@@ -68,6 +76,8 @@ extension VaultKit {
                     }
                     
                     self?.purchasedProductIDs.insert(vaultProduct.id)
+                    self?.setCurrentPurchase(transaction, willRenew: false)
+                    
                 } else if let subscription = vaultProduct.product?.subscription {
                     if let newStatuses = try? await subscription.status,
                        let status = newStatuses.first {
@@ -102,8 +112,12 @@ extension VaultKit {
             }
             
             //TODO: allow for a collection of Verified Active Products
-            if let firstTransaction = (verifiedTransactions).keys.first {
-                self?.setCurrentPurchase(firstTransaction, willRenew: verifiedTransactions[firstTransaction])
+            for key in (verifiedTransactions).keys {
+                if verifiedTransactions[key] == true {
+                    self?.setCurrentSubscription(key, willRenew: verifiedTransactions[key])
+                } else {
+                    self?.setCurrentPurchase(key, willRenew: verifiedTransactions[key])
+                }
             }
             
             print(productPurchasedDescription)
@@ -129,6 +143,15 @@ extension VaultKit {
             }
             
             print(productPurchasedDescription)
+        }
+    }
+    
+    func setCurrentSubscription(_ transaction: Transaction, willRenew: Bool?) {
+        if let product = self.products[transaction.productID] {
+            
+            self.currentSubscription = .init(expirationDate: transaction.expirationDate,
+                                             purchaseDate: transaction.purchaseDate,
+                                             isRenewable: willRenew ?? (product.kind == .renewable))
         }
     }
     

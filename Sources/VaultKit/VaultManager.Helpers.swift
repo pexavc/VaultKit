@@ -16,8 +16,16 @@ extension VaultManager {
         kit.currentPurchase
     }
     
+    public var currentSubscription: VaultActiveProduct? {
+        kit.currentSubscription
+    }
+    
     public static var currentPurchase: VaultActiveProduct? {
         VaultManager.shared.currentPurchase
+    }
+    
+    public static var currentSubscription: VaultActiveProduct? {
+        VaultManager.shared.currentSubscription
     }
     
     public var products: [VaultProduct] {
